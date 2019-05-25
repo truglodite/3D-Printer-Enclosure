@@ -1,40 +1,40 @@
 # 3D-Printer-Enclosure
-###Arduino PID heated/cooled 3d printer enclosure controller w/ IEE VFD.
+### Arduino PID heated/cooled 3d printer enclosure controller w/ IEE VFD.
 
 Version 9 adds a heater timer feature.
 
-##Features:
--Displays: enclosure temp, room temp, cooling fan %, heater status, cooldown status
--Simple 3 button navigation (up/down/select) w/ long press sub-menus
--PID+PWM Cooling Fan Control w/ Cooldown Mode
--PWM Mixing Fan Control w/ Manual Override
--Fan kickstart
--Anti fan stall (obeys minimum fan speeds)
--Heater Control (with hysterisis + min switching time)
--Heater temp offset (prevents heating/cooling "battles")
--Heat Soak Monitor (Auto Heater Off)
--Heater timer (for cold climates/weaker heaters, when heat soak does not occur)
--Case LED PWM Control
--Spotlight LED PWM Control
--Cooldown Mode
--Dallas swap #define (no messing with 1-wire addresses)
--Several other #defines to make customizing & tuning easier
+## Features:
+*Displays: enclosure temp, room temp, cooling fan %, heater status, cooldown status
+*Simple 3 button navigation (up/down/select) w/ long press sub-menus
+*PID+PWM Cooling Fan Control w/ Cooldown Mode
+*PWM Mixing Fan Control w/ Manual Override
+*Fan kickstart
+*Anti fan stall (obeys minimum fan speeds)
+*Heater Control (with hysterisis + min switching time)
+*Heater temp offset (prevents heating/cooling "battles")
+*Heat Soak Monitor (Auto Heater Off)
+*Heater timer (for cold climates/weaker heaters, when heat soak does not occur)
+*Case LED PWM Control
+*Spotlight LED PWM Control
+*Cooldown Mode
+*Dallas swap #define (no messing with 1-wire addresses)
+*Several other #defines to make customizing & tuning easier
 
-##Hardware:
-  2x Dallas 1-wire temp sensors (enclosure and room temps)
-  20x2 IEE serial VFD display (softserial used... easily ported to other serial displays)
-  4x logic level MOSFETs (for the 2 fan outputs and 2 LED outputs)
-  2-3 or more 12V fans (at least 1 for fresh air, 1 for mixing, and 1 for the heater if used)
-  LEDs for case lighting
-  High powered LED spotlight (Luxeon Star or similar)
-  Power LED driver (Meanwell LDD-350LL or similar 5V PWM dimmable circuit)
-  3x momentary NO toggle buttons (6mm square type if using my printed VFD enclosure)
-  5VDC/110VAC 40A SSR (to switch the heater)
-  ~250W personal space heater (120VAC ceramic type preferred)
+## Hardware:
+ -2x Dallas 1-wire temp sensors (enclosure and room temps)
+ -20x2 IEE serial VFD display (softserial used... easily ported to other serial displays)
+ -4x logic level MOSFETs (for the 2 fan outputs and 2 LED outputs)
+ -2-3 or more 12V fans (at least 1 for fresh air, 1 for mixing, and 1 for the heater if used)
+ -LEDs for case lighting
+ -High powered LED spotlight (Luxeon Star or similar)
+ -Power LED driver (Meanwell LDD-350LL or similar 5V PWM dimmable circuit)
+ -3x momentary NO toggle buttons (6mm square type if using my printed VFD enclosure)
+ -5VDC/110VAC 40A SSR (to switch the heater)
+ -~250W personal space heater (120VAC ceramic type preferred)
 
-##Operation-----------------------------------------------------------------------
+## Operation-----------------------------------------------------------------------
 
-###Auto & AutoH mode:
+### Auto & AutoH mode:
 Boots to auto mode, with heater function disabled. In auto mode, the fresh fan controlled by PID to maintain
 tempDesired. If heating is enabled, it is hysterisis controlled to heat the enclosure up to tempDesired
 minus heaterTempOffset, plus or minus heaterTempHysterisis. The heater function automatically turns off
@@ -45,7 +45,7 @@ The LCD displays "Auto" when heater feature is disabled, or "AutoH" when heater 
 the actual/set temperatures, room temp, and the fan output % (or "Heating").Short pressing the Up/down buttons
 will adjust tempDesired, and the select button will switch to cooldown mode.
 
-###Cooldown mode:
+### Cooldown mode:
 In cooldown mode, the heater remains off and fresh fan spins 100% until
 the temperature falls below tempCooldown. Hysterisis is used to prevent requent fan cycling
 in cooldown mode. Also, in this mode the display shows "Cool",
@@ -53,14 +53,14 @@ actual/set temperatures, Room temp, and "Cooling" or "Idle" depending on fan sta
 Short pressing the up/down buttons will adjust tempCooldown, and short pressing  the
 select button will switch to auto mode.
 
-###Mixing fan control:
+### Mixing fan control:
 The mixing fan runs at a manually set speed if that speed is greater than the fresh
 air fan speed or minimum mix fan speed. If the fresh air fan speed exceeds the manual speed setting,
 the manual mixing fan speed is overridden, and the mixing fan will run at the fresh air fan
 speed. The mixing fan turns 100% on whenever the heater is on, and stays on for heaterMixFanDelay
 millis after the heater turns off.
 
-###Fan kickstart & anti-stall:
+### Fan kickstart & anti-stall:
 All fans have a kickstart feature, which initially sends extra power to the fans to get
 them moving. Also no fans will startup (or continue to buzz) unless their input pwm
 is enough to keep them spinning. This combination of kickstart and minimum PWM
@@ -68,17 +68,17 @@ control reduces PID reduced delay and overshoot, and prevents unecessary buzzing
 of non-moving fans. StartupPWM and MinPWM compiler defines can be used to tune behavior
 of both fresh and mixing fans. Adjust them as needed to match your choice of fans.
 
-###Changing manual mix fan speed:
+### Changing manual mix fan speed:
 Long pressing (>2sec default) the up button switches to the manaul mixing fan speed
 setting. Press select to return to auto or autoh mode.
 
-###Changing LED brightness:
+### Changing LED brightness:
 Long pressing the down button switches to the case led setting. In case
 led brightness mode, pressing up or down will adjust the case LED brightness.
 Press select to advance to the spotlight setting menu, where up/down adjusts
 spotlight brightness. Press select again to return to auto or autoh mode.
 
-###Changing Heater settings (if a heater is used):
+### Changing Heater settings (if a heater is used):
 Long pressing select goes to the heater enable/disable setting. Pressing up enables heating,
 and down disables it. This setting will persist until the next reboot, if the heat soak
 timer is triggered, or if the heater timer has elapsed. Short pressing select then goes
