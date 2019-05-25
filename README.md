@@ -33,6 +33,7 @@ Hardware:
   ~250W personal space heater (120VAC ceramic type preferred)
 
 Operation-----------------------------------------------------------------------
+
 Auto & AutoH mode:
 Boots to auto mode, with heater function disabled. In auto mode, the fresh fan controlled by PID to maintain
 tempDesired. If heating is enabled, it is hysterisis controlled to heat the enclosure up to tempDesired
