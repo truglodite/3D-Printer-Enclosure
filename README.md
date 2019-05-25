@@ -23,11 +23,11 @@ Version 9 adds a heater timer feature.
 ## Hardware:
  - 2x Dallas 1-wire temp sensors (enclosure and room temps)
  - 20x2 IEE serial VFD display (softserial used... easily ported to other serial displays)
- - 4x logic level MOSFETs (for the 2 fan outputs and 2 LED outputs)
+ - 3x logic level MOSFETs (for the 2 fan outputs and 1 LED output)
  - 2-3 or more 12V fans (at least 1 for fresh air, 1 for mixing, and 1 for the heater if used)
  - LEDs for case lighting
  - High powered LED spotlight (Luxeon Star or similar)
- - Power LED driver (Meanwell LDD-350LL or similar 5V PWM dimmable circuit)
+ - Power LED driver (Meanwell LDD-350LL or similar 5V PWM dimmable device)
  - 3x momentary NO toggle buttons (6mm square type if using my printed VFD enclosure)
  - 5VDC/110VAC 40A SSR (to switch the heater)
  - ~250W personal space heater (120VAC ceramic type preferred)
