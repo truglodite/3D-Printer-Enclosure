@@ -52,7 +52,7 @@
 
 #define heaterMinSwitchTime 10000  //min millis between heater switching
 #define heaterTempOffset 1.0  //celsius below desired temp when heater is allowed on (to avoid heater vs cooling fan fights)
-#define heaterHysterisis 0.5 //Celsius hysterisis to use for heater
+#define heaterHysteresis 0.5 //Celsius hysteresis to use for heater
 #define heaterMixFanDelay 30000 //millis to keep mixing fan on after heater turns off (>heaterMinSwitchTime)
 #define heaterMixFanPWM 255 //pwm value for mix fan while heater is on (255)
 #define heaterMaxOffTime 35000 //millis of heater off time to allow before shutting down heating function (heatsoak timer... >heaterMixFanDelay)
@@ -63,7 +63,7 @@
 #define tempMinSetting      20.0   //min desired temperature allowed(20)
 #define tempMaxSetting      50.0   //max desired temperature allowed (50). Stepper motors may fail at >50C.
 #define tempCooldownDefault 24.0 //default cooldown temperature (30)
-#define tempCooldownHysterisis 1.0 //hysterisis for fans in cooldown mode
+#define tempCooldownHysteresis 1.0 //hysteresis for fans in cooldown mode
 #define tempIncrement 2.0   //celsius change per up/down push (2)
 
 #define dallasResolution 12 //dallas bit resolution (4,8, or 12)
@@ -725,13 +725,13 @@ void updateOutputs(void)  {
   //cooldown mode
   if(mode == 1)  {
     heaterStatus = 0;  //turn off heater
-    if(tempAverage < tempCooldown - tempCooldownHysterisis)  {  //cool enough, turn everything off
+    if(tempAverage < tempCooldown - tempCooldownHysteresis)  {  //cool enough, turn everything off
       analogWrite(freshFanPin,0);  //fresh fan off
       freshFanStarted = false;  //update fan startup flag
       mixFanPWM = 0;               //mix fan off
       mixFanStarted = false;  //raise started flag
     }
-    else if(tempAverage > tempCooldown + tempCooldownHysterisis) {  //not cool enough, cooling off
+    else if(tempAverage > tempCooldown + tempCooldownHysteresis) {  //not cool enough, cooling off
       analogWrite(freshFanPin,255);  //both fans on full
       freshFanStarted = true;  //update fan startup flag
       mixFanPWM = 255;
@@ -764,7 +764,7 @@ void updateOutputs(void)  {
         heaterStartTime = currentMillis;
       }
       //heater is off, temp too low, and it's been off long enough
-      if(!heaterStatus && tempAverage <= tempDesired - heaterTempOffset - heaterHysterisis && currentMillis - heaterSwitchTime >= heaterMinSwitchTime)  {
+      if(!heaterStatus && tempAverage <= tempDesired - heaterTempOffset - heaterHysteresis && currentMillis - heaterSwitchTime >= heaterMinSwitchTime)  {
         //heater has been off too long... must be heat soaked (requires resetting switchTime when heaterControl is activated!)
         if(currentMillis - heaterSwitchTime >= heaterMaxOffTime) {
           heaterControl = 0; //turn off heater function
@@ -777,7 +777,7 @@ void updateOutputs(void)  {
         }
       }
       //heater is on, temp is high enough, and it's been on long enough
-      else if(heaterStatus && tempAverage >= tempDesired - heaterTempOffset + heaterHysterisis && currentMillis - heaterSwitchTime >= heaterMinSwitchTime) {
+      else if(heaterStatus && tempAverage >= tempDesired - heaterTempOffset + heaterHysteresis && currentMillis - heaterSwitchTime >= heaterMinSwitchTime) {
         heaterStatus = 0;
         heaterSwitchTime = currentMillis;
       }

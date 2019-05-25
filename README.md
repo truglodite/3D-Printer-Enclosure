@@ -10,7 +10,7 @@ Version 9 adds a heater timer feature.
 * PWM Mixing Fan Control w/ Manual Override
 * Fan kickstart
 * Anti fan stall (obeys minimum fan speeds)
-* Heater Control (with hysterisis + min switching time)
+* Heater Control (with hysteresis + min switching time)
 * Heater temp offset (prevents heating/cooling "battles")
 * Heat Soak Monitor (Auto Heater Off)
 * Heater timer (for cold climates/weaker heaters, when heat soak does not occur)
@@ -36,8 +36,8 @@ Version 9 adds a heater timer feature.
 
 ### Auto & AutoH mode:
 Boots to auto mode, with heater function disabled. In auto mode, the fresh fan controlled by PID to maintain
-tempDesired. If heating is enabled, it is hysterisis controlled to heat the enclosure up to tempDesired
-minus heaterTempOffset, plus or minus heaterTempHysterisis. The heater function automatically turns off
+tempDesired. If heating is enabled, it is hysteresis controlled to heat the enclosure up to tempDesired
+minus heaterTempOffset, plus or minus heaterTempHysteresis. The heater function automatically turns off
 if heaterMaxOffTime is elapsed since the heater was turned off. This is an easy way to determine if the
 enclosure is heat soaked, then heating is automatically disabled to prevent continued heating after a print
 is finished. If the heater timer feature is used, the heater will turn off after the set hours has elapsed.
@@ -47,7 +47,7 @@ will adjust tempDesired, and the select button will switch to cooldown mode.
 
 ### Cooldown mode:
 In cooldown mode, the heater remains off and fresh fan spins 100% until
-the temperature falls below tempCooldown. Hysterisis is used to prevent requent fan cycling
+the temperature falls below tempCooldown. Hysteresis is used to prevent frequent fan cycling
 in cooldown mode. Also, in this mode the display shows "Cool",
 actual/set temperatures, Room temp, and "Cooling" or "Idle" depending on fan state.
 Short pressing the up/down buttons will adjust tempCooldown, and short pressing  the
@@ -64,12 +64,12 @@ millis after the heater turns off.
 All fans have a kickstart feature, which initially sends extra power to the fans to get
 them moving. Also no fans will startup (or continue to buzz) unless their input pwm
 is enough to keep them spinning. This combination of kickstart and minimum PWM
-control reduces PID reduced delay and overshoot, and prevents unecessary buzzing/heating
+control reduces PID reduced delay and overshoot, and prevents unnecessary buzzing/heating
 of non-moving fans. StartupPWM and MinPWM compiler defines can be used to tune behavior
 of both fresh and mixing fans. Adjust them as needed to match your choice of fans.
 
 ### Changing manual mix fan speed:
-Long pressing (>2sec default) the up button switches to the manaul mixing fan speed
+Long pressing (>2sec default) the up button switches to the manual mixing fan speed
 setting. Press select to return to auto or autoh mode.
 
 ### Changing LED brightness:
