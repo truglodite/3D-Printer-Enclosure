@@ -4,33 +4,33 @@
 Version 9 adds a heater timer feature.
 
 ## Features:
-*Displays: enclosure temp, room temp, cooling fan %, heater status, cooldown status
-*Simple 3 button navigation (up/down/select) w/ long press sub-menus
-*PID+PWM Cooling Fan Control w/ Cooldown Mode
-*PWM Mixing Fan Control w/ Manual Override
-*Fan kickstart
-*Anti fan stall (obeys minimum fan speeds)
-*Heater Control (with hysterisis + min switching time)
-*Heater temp offset (prevents heating/cooling "battles")
-*Heat Soak Monitor (Auto Heater Off)
-*Heater timer (for cold climates/weaker heaters, when heat soak does not occur)
-*Case LED PWM Control
-*Spotlight LED PWM Control
-*Cooldown Mode
-*Dallas swap #define (no messing with 1-wire addresses)
-*Several other #defines to make customizing & tuning easier
+* Displays: enclosure temp, room temp, cooling fan %, heater status, cooldown status
+* Simple 3 button navigation (up/down/select) w/ long press sub-menus
+* PID+PWM Cooling Fan Control w/ Cooldown Mode
+* PWM Mixing Fan Control w/ Manual Override
+* Fan kickstart
+* Anti fan stall (obeys minimum fan speeds)
+* Heater Control (with hysterisis + min switching time)
+* Heater temp offset (prevents heating/cooling "battles")
+* Heat Soak Monitor (Auto Heater Off)
+* Heater timer (for cold climates/weaker heaters, when heat soak does not occur)
+* Case LED PWM Control
+* Spotlight LED PWM Control
+* Cooldown Mode
+* Dallas swap #define (no messing with 1-wire addresses)
+* Several other #defines to make customizing & tuning easier
 
 ## Hardware:
- -2x Dallas 1-wire temp sensors (enclosure and room temps)
- -20x2 IEE serial VFD display (softserial used... easily ported to other serial displays)
- -4x logic level MOSFETs (for the 2 fan outputs and 2 LED outputs)
- -2-3 or more 12V fans (at least 1 for fresh air, 1 for mixing, and 1 for the heater if used)
- -LEDs for case lighting
- -High powered LED spotlight (Luxeon Star or similar)
- -Power LED driver (Meanwell LDD-350LL or similar 5V PWM dimmable circuit)
- -3x momentary NO toggle buttons (6mm square type if using my printed VFD enclosure)
- -5VDC/110VAC 40A SSR (to switch the heater)
- -~250W personal space heater (120VAC ceramic type preferred)
+ - 2x Dallas 1-wire temp sensors (enclosure and room temps)
+ - 20x2 IEE serial VFD display (softserial used... easily ported to other serial displays)
+ - 4x logic level MOSFETs (for the 2 fan outputs and 2 LED outputs)
+ - 2-3 or more 12V fans (at least 1 for fresh air, 1 for mixing, and 1 for the heater if used)
+ - LEDs for case lighting
+ - High powered LED spotlight (Luxeon Star or similar)
+ - Power LED driver (Meanwell LDD-350LL or similar 5V PWM dimmable circuit)
+ - 3x momentary NO toggle buttons (6mm square type if using my printed VFD enclosure)
+ - 5VDC/110VAC 40A SSR (to switch the heater)
+ - ~250W personal space heater (120VAC ceramic type preferred)
 
 ## Operation-----------------------------------------------------------------------
 
@@ -88,7 +88,7 @@ Pressing up/down increases/decreases the timer by 1 hour, from 0 to heaterTimerM
 Any time the heater hours is adjusted, the heat timer is restarted at t=0. Short pressing select
 again returns to auto or autoh mode.
 
-*While working in any long press menu, the fans and heater will be controlled as if in auto or autoh mode.
+*While working in any long press menu, the fans and heater will be controlled as if in auto or autoh mode.*
 
 *The desired & cooldown temperature adjustments are limited to max/min values for safety.
-Change them as needed to better suit your setup.
+Change them as needed to better suit your setup.*
