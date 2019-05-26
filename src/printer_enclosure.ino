@@ -1,5 +1,5 @@
 /* printer_enclosure_pid9
- *  by: Kevin Bernas
+ *  by: truglodite
  *  Updated: 5-25-2019
  */
 
@@ -87,7 +87,7 @@ unsigned long lastButton = 0;      //debouncing timer storage
 unsigned long buttonTimer = 0;     //long press button time storage
 bool upButtonFlag = 0;             //flag to register long button presses
 bool downButtonFlag = 0;           //flag to register long button presses
-bool selectButtonFlag = 0;           //flag to register long button presses
+bool selectButtonFlag = 0;         //flag to register long button presses
 byte tempState = 0;                //temperature state machine variable
 byte mode = 0;                     //flag for mode...
 //0=auto+autoh, 1=cooldown, 2=mix fan setting, 3=led setting, 4=heater setting, 5=spotlight setting, 6=heater timer setting
