@@ -284,7 +284,7 @@ void setup() {
   //Splash screen
   //         ("12345678901234567890");
   vfd.print(F("  Smart Enclosure   "));
-  vfd.print(F("  by: Kevin Bernas  "));
+  vfd.print(F("   by: Truglodite   "));
   delay(splashTime);  //window of time to release a "hold on boot" button
 
   //start PIDs
