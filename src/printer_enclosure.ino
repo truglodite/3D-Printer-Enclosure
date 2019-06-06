@@ -1,6 +1,6 @@
 /* printer_enclosure.ino
- * by: truglodite
- * Updated: 5-25-2019
+ * by: Truglodite
+ * Updated: 6-5-2019
  */
 
 #include <OneWire.h>
@@ -12,7 +12,7 @@
 #endif
 #include "configuration.h"
 
-//(more) global vars///////////////////////////////////////////////
+// global vars ////////////////////////////////////////////////////////////////
 unsigned long currentMillis = 0;   //duh... saves millis() at the start of each loop
 unsigned long tempRequestTime = 0; //millis when temp request was sent
 unsigned long lastDisplayTime = 0; //store time when last display update was sent
@@ -24,28 +24,28 @@ bool selectButtonFlag = 0;         //flag to register long button presses
 byte tempState = 0;                //temperature state machine variable
 byte mode = 0;                     //flag for mode...
 //0=auto+autoh, 1=cooldown, 2=mix fan setting, 3=led setting, 4=heater setting, 5=spotlight setting, 6=heater timer setting
-double tempArray[sizeOfBuffer];    //array to store individual temperature readings
-double temp2Array[sizeOfBuffer];   //array to store individual temperature readings
-unsigned int i = 0;                //temperature buffer index
-double tempAverage = 22;           //current value averaged from buffer
-double temp2Average = 22;          //current value averaged from buffer
-double tempDesired = tempDefault;  //desired temp storage
+double tempArray[sizeOfBuffer];    // array to store individual temp readings
+double temp2Array[sizeOfBuffer];   // array to store individual temp readings
+unsigned int i = 0;                // temperature buffer index
+double tempAverage = 22;           // current value averaged from buffer
+double temp2Average = 22;          // current value averaged from buffer
+double tempDesired = tempDefault;  // desired temp storage
 double tempCooldown = tempCooldownDefault;  //cooldown temp storage
-double freshFanPWM = 0;            //fresh fan pwm storage
-bool freshFanStarted = 0;          //store fan started/stopped status
+double freshFanPWM = 0;            // fresh fan pwm storage
+bool freshFanStarted = 0;          // store fan started/stopped status
 unsigned long freshFanStartTime = 0;
-double mixFanManualPWM = mixFanPWMdefault; //mix fan manual manual pwm value storage
-double mixFanPWM = 0;              //actual output mix fan pwm storage
-bool mixFanStarted = 0;            //store fan started/stopped status
+double mixFanManualPWM = mixFanPWMdefault; // mix fan manual pwm value
+double mixFanPWM = 0;              // actual output mix fan pwm
+bool mixFanStarted = 0;            // fan started/stopped status
 unsigned long mixFanStartTime = 0;
 double caseLedPWM = caseLedPWMdefault;  //case LED pwm storage
 double spotlightPWM = spotlightPWMdefault;  //case LED pwm storage
 bool heaterStatus = 0;             //storage for heater on/off status
-bool heaterControl = 0;            //heater function on/off (0 = off after bootup)
-unsigned long heaterSwitchTime = 0;   //store last time heater was turned on or off
-unsigned long heaterHours = 0;               //store heat timer hours
-unsigned long heaterStartTime = 0; //store heat timer start timer
-bool heaterTimerStarted = 0;       //flag to start heat timer
+bool heaterControl = 0;            //heat function on/off (0 = off after bootup)
+unsigned long heaterSwitchTime = 0; //store last time heat was turned on or off
+unsigned long heaterHours = 0;      //store heat timer hours
+unsigned long heaterStartTime = 0;  //store heat timer start timer
+bool heaterTimerStarted = 0;        //flag to start heat timer
 
 //dallas sensor///////////////////////////////////////////////
 OneWire oneWire(dallasPin);

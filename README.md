@@ -1,7 +1,5 @@
 # 3D-Printer-Enclosure
-### Arduino PID heated/cooled 3d printer enclosure controller w/ IEE VFD.
-
-Version 9 adds a heater timer feature.
+### Arduino PID heated/cooled 3d printer enclosure controller w/ display.
 
 ## Features:
 * Displays: enclosure temp, room temp, cooling fan %, heater status, cooldown status
@@ -22,6 +20,8 @@ Version 9 adds a heater timer feature.
 
 ## Hardware:
  - 2x Dallas 1-wire temp sensors (enclosure and room temps)
+ - 1602 i2c LCD
+ or
  - 20x2 IEE serial VFD display (softserial used... easily ported to other serial displays)
  - 3x logic level MOSFETs (for the 2 fan outputs and 1 LED output)
  - 2-3 or more 12V fans (at least 1 for fresh air, 1 for mixing, and 1 for the heater if used)

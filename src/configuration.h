@@ -18,7 +18,7 @@
   #define VFD_TX       12   // connect to VFD serial rx (pin 14)
 #endif
 
-// Otherwise a 2x16 i2c LCD display is used
+// A 1602 i2c LCD display is default
 #ifndef vfd_display
   #include <LiquidCrystal_I2C.h>
   #include <Wire.h>
@@ -66,16 +66,16 @@
 #define heaterHoursMax 48 //max hrs allowed for heater timer (any int... 48hrs should cover most prints)
 
 #define tempDefault  44.0   //bootup desired Celsius setting (50)
-#define tempMinSetting      20.0   //min desired temperature allowed(20)
-#define tempMaxSetting      50.0   //max desired temperature allowed (50). Stepper motors may fail at >50C.
+#define tempMinSetting      20.0   //min desired t allowed(20)
+#define tempMaxSetting      50.0   //max desired t allowed (50). Steppers may fail at >50C.
 #define tempCooldownDefault 24.0 //default cooldown temperature (30)
 #define tempCooldownHysteresis 1.0 //hysteresis for fans in cooldown mode
 #define tempIncrement 2.0   //celsius change per up/down push (2)
 
 #define dallasResolution 12 //dallas bit resolution (4,8, or 12)
-#define sizeOfBuffer 3    //the number of temperature readings to store for averaging (1 = disable, larger buffers use more memory
+#define sizeOfBuffer 3    //the number of t readings to store for averaging (1 = disable, larger buffers use more memory
                           //and may result in laggy PID feedback, which may increase overshoot)
-#define tempPeriod   800  //millis to wait for a requested temp from the Dallas sensor (datasheet says >760 for 12bit)
+#define tempPeriod   800  //millis to wait for a requested temp (>760 for 12bit)
 
 //PID tuning parameters... will depend on many aspects of your setup. Use ZN or other manual tuning methods.
 //The default PID's work well with my enclosure using a specific assortment of hardware, so they
