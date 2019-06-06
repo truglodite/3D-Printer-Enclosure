@@ -1,6 +1,10 @@
 /* printer_enclosure.ino
  * by: Truglodite
  * Updated: 6-5-2019
+ *
+ * A heated 3d printer enclosure environment controller, based on Arduino,
+ * with PID loop feedback to eliminate abrubt fan speed changes.
+ * User configs are located in configuration.h.
  */
 
 #include <OneWire.h>
@@ -27,11 +31,11 @@ byte mode = 0;                     //flag for mode...
 double tempArray[sizeOfBuffer];    // array to store individual temp readings
 double temp2Array[sizeOfBuffer];   // array to store individual temp readings
 unsigned int i = 0;                // temperature buffer index
-double tempAverage = 22;           // current value averaged from buffer
-double temp2Average = 22;          // current value averaged from buffer
+double tempAverage = 22.0;           // current value averaged from buffer
+double temp2Average = 22.0;          // current value averaged from buffer
 double tempDesired = tempDefault;  // desired temp storage
 double tempCooldown = tempCooldownDefault;  //cooldown temp storage
-double freshFanPWM = 0;            // fresh fan pwm storage
+double freshFanPWM = 0.0;            // fresh fan pwm storage
 bool freshFanStarted = 0;          // store fan started/stopped status
 unsigned long freshFanStartTime = 0;
 double mixFanManualPWM = mixFanPWMdefault; // mix fan manual pwm value
@@ -117,7 +121,7 @@ void setup() {
     //         ("12345678901234567890");
     vfd.print(F("  Smart Enclosure   "));
     vfd.print(F("   by: Truglodite   "));
-    delay(splashTime);  //window of time to release a "hold on boot" button
+    delay(splashTime);  //a window of time to release a "hold on boot" button
   #endif
   #ifndef vfd_display
     //start lcd
@@ -157,13 +161,13 @@ void loop() {
   }
 
   #ifdef octoprintControl
-    // time to process op inputs
+    // time to read pins
     if(currentMillis - lastOctoprintRead > octoprintUpdateRate) {
       bool octoprintHeatTemp = digitalRead(octoprintHeatPin);
       bool octoprintCoolTemp = digitalRead(octoprintCoolPin);
-      // op heat and/or cool has changed
+      // heat and/or cool input has changed
       if(octoprintHeatTemp != octoprintHeat || octoprintCoolTemp != octoprintCool)  {
-        octoprintHeat = octoprintHeatTemp; // update the flags...
+        octoprintHeat = octoprintHeatTemp; // update the inputs...
         octoprintCool = octoprintCoolTemp;
         octoprintUpdateFlag = 1;  // set the update flag
       }
@@ -175,7 +179,7 @@ void loop() {
         // do nothing, manual input ALWAYS discards op changes
         return;
       }     // after this, we must be in either auto or cool mode
-      // OP sent 'auto no-heat' mode (low heat, low cool)
+      // OP sent new 'auto no-heat' mode (low heat, low cool)
       else if(!octoprintCool && !octoprintHeat) {
         if(mode == 1) {  // we were in cooling mode
           freshFanPID.SetMode(AUTOMATIC);
@@ -184,14 +188,14 @@ void loop() {
         heaterControl = 0; //turn off heater
         heaterTimerStarted = 0; //re-enable heater start flag for next time
       }
-      // op sending new cool signal
+      // op sent new cool signal
       else if(octoprintCool) {
         mode = 1; // cooling mode
         freshFanPID.SetMode(MANUAL);
         heaterControl = 0; //turn off heater
         heaterTimerStarted = 0; //re-enable heater start flag for next time
       }
-      // OP sending new heat signal, and heater is off
+      // OP sent new heat signal, and heater is not on
       else if(octoprintHeat && !heaterControl) {
         if(mode == 1) {  // we were in cooldown mode
           freshFanPID.SetMode(AUTOMATIC);
@@ -202,7 +206,7 @@ void loop() {
         heaterSwitchTime = currentMillis;  //to make sure we don't have a false heater timeout
         heaterTimerStarted = 0; //set flag to restart timer
       }
-      octoprintUpdateFlag = 0;  // done processing, data is now stale
+      octoprintUpdateFlag = 0;  // done processing, data is marked as stale
     }
   #endif
 }  //enaloop... ;)
@@ -224,8 +228,8 @@ void updateTemps()  {
        }
        tempArray[i] = sensors.getTempC(dallasAddress); //store new temp value (*note, a float is recast to double)
        temp2Array[i] = sensors.getTempC(dallas2Address); //store new temp value (*note, a float is recast to double)
-       tempAverage = 0;  //calc new average temp...
-       temp2Average = 0;  //calc new average temp...
+       tempAverage = 0;  //calc new average temps...
+       temp2Average = 0;
        for(int j = 0; j < sizeOfBuffer; j++) {
          tempAverage += tempArray[j];
          temp2Average += temp2Array[j];

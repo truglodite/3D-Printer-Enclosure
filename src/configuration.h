@@ -1,6 +1,6 @@
 // configuration.h
 // by: Truglodite
-// updated:
+// updated: 6-6-2019
 //
 // User configuration for printer_enclosure.ino
 //
@@ -9,22 +9,22 @@
 // Uncomment if your room and enclosure temperatures are swapped.
 //#define swapDallas
 
-// Uncomment if using octoprint triggering
-#define octoprintControl
-#ifdef octoprintControl
+
+#define octoprintControl  // Uncomment if using octoprint triggering
   // Note, octoprint input changes will trigger a mode change ONLY IF they
   // occur during an automated mode (auto, cooldown, and heating). IE, if a
   // user is changing a setting in a GUI input mode, the OP command will be
   // ignored, and the user's end settings will carry on until one of the pins
   // changes again.
+#ifdef octoprintControl
   #define octoprintHeatPin  A0  // triggers 'heater on' when high
   #define octoprintCoolPin  A1  // triggers 'cooling on' when high
   // triggers 'auto on' when both heat and cool pins are low
   #define octoprintUpdateRate  3000  // millis between reading op input pins
 #endif
 
-// Uncomment if using a 2x20 IEE VFD display
-#define vfd_display
+
+#define vfd_display  // Uncomment if using a 2x20 IEE VFD display
 #ifdef vfd_display
   #include "ieeVfdCommands.h"
   #include <SoftwareSerial.h>
@@ -39,7 +39,7 @@
   #include <Wire.h>
 #endif
 
-// Pinout /////////////////////////////////////////////////////////////////////
+// Pinouts /////////////////////////////////////////////////////////////////////
 #define dallasPin    2    // To Dallas data pins (requires one 4k7 pullup)
 #define freshFanPin  3    // to cooling fan mosfet
 #define selectPin    4    // buttons are momentary N.O. (internal pullups)
@@ -50,7 +50,7 @@
 #define spotlightPin 11   // to spotlight LED driver (LDD-350LL)
 #define heaterPin    13   // to heater ssr input
 
-// General prefs ///////////////////////////////////////////////
+// General preferences ///////////////////////////////////////////////
 #define debounce     50   //button debounce millis (no repeaters, so this can be short)
 #define longPress    2000 //millis to hold button for special menus
 #define splashTime   3000 //millis to show splash screen
@@ -90,13 +90,14 @@
 
 #define dallasResolution 12 //dallas bit resolution (4,8, or 12)
 #define sizeOfBuffer 3    //the number of t readings to store for averaging (1 = disable, larger buffers use more memory
-                          //and may result in laggy PID feedback, which may increase overshoot)
+                          //and may result in laggy PID feedback (increases overshoot)
 #define tempPeriod   800  //millis to wait for a requested temp (>760 for 12bit)
 
-//PID tuning parameters... will depend on many aspects of your setup. Use ZN or other manual tuning methods.
-//The default PID's work well with my enclosure using a specific assortment of hardware, so they
-//may be a good starting point for tuning most setups.
-#define freshFanPIDsampleTime 200  //200ms should work for most... be aware that PID values scale to sample time
+// PID tuning parameters... will depend on many aspects of your setup.
+// Use ZN or other manual tuning methods. The default PID's work well
+// with the code author's enclosure using a specific assortment of hardware,
+// but they should be a good starting point for tuning most setups.
+#define freshFanPIDsampleTime 200  //200ms should work for most... beware that PID values below should scale with the sample time
 double freshFanP=    10;  //the pid's must be set whether or not you use bang bang
 double freshFanI=    1;   //default p,i,d = 10,5,1
 double freshFanD=    1;
