@@ -1,10 +1,11 @@
 # 3D-Printer-Enclosure
-### Arduino PID heated/cooled 3d printer enclosure controller w/ display.
+### Smooth PID controlled heated 3d printer enclosure control w/ display & Octoprint interface.
 
 ## Features:
-* Displays: enclosure temp, room temp, cooling fan %, heater status, cooldown status
 * Simple 3 button navigation (up/down/select) w/ long press sub-menus
-* PID+PWM Cooling Fan Control w/ Cooldown Mode
+* Displays: enclosure temp, room temp, cooling fan %, heater status, cooldown status
+* 3 fan channels for fresh air cooling, internal air mixing, and heater
+* PID/PWM Fresh air cooling fan control
 * PWM Mixing Fan Control w/ Manual Override
 * Fan kickstart
 * Anti fan stall (obeys minimum fan speeds)
@@ -17,18 +18,20 @@
 * Cooldown Mode
 * Dallas swap #define (no messing with 1-wire addresses)
 * Several other #defines to make customizing & tuning easier
+* *NEW* Octoprint heat/auto/cool mode triggering
 
 ## Hardware:
+ - Arduino Pro-mini 328p 16MHz/5V (or similar)
  - 2x Dallas 1-wire temp sensors (enclosure and room temps)
- - 1602 i2c LCD
+ - *NEW* 1602 i2c LCD (default)
  or
- - 20x2 IEE serial VFD display (softserial used... easily ported to other serial displays)
+ - 20x2 IEE serial VFD display (softserial)
  - 3x logic level MOSFETs (for the 2 fan outputs and 1 LED output)
- - 2-3 or more 12V fans (at least 1 for fresh air, 1 for mixing, and 1 for the heater if used)
+ - 2 or more 12V fans (at least 1 for fresh air, at least 1 for mixing, and 1 for the heater if used)
  - LEDs for case lighting
  - High powered LED spotlight (Luxeon Star or similar)
  - Power LED driver (Meanwell LDD-350LL or similar 5V PWM dimmable device)
- - 3x momentary NO toggle buttons (6mm square type if using my printed VFD enclosure)
+ - 3x SPST momentary NO tactile buttons (6mm square type if using my printed VFD enclosure)
  - 5VDC/110VAC 40A SSR (to switch the heater)
  - ~250W personal space heater (120VAC ceramic type preferred)
 
@@ -92,3 +95,31 @@ again returns to auto or autoh mode.
 
 *The desired & cooldown temperature adjustments are limited to max/min values for safety.
 Change them as needed to better suit your setup.*
+
+### Octoprint integration
+Optional octoprint integration allows auto, heat, and cool modes to be controlled by 2 pins connected to the RPi. The OP inputs are read periodically in all modes. If NOT in a UI input mode while the inputs change, the code switches to the appropriate mode (with default heater hours for heat mode).
+Manual input is supreme... OP changes are ignored if they occur during GUI input modes.
+
+## Pinouts
+Arduino pin | Connect to
+----------- | ----------
+D2  |  Dallas temp data pins
+D3  |  Fresh air fan MOSTFET input
+D4  |  Select button (to gnd)
+D5  |  Up button (to gnd)
+D6  |  Down button (to gnd)
+D9  |  Mixing fan MOSTFET input
+D10  |  Case lights MOSFET input
+D11  |  Spotlight LED driver input
+D13  |  Heater SSR input
+A4  |  LCD SDA
+A5  |  LCD SCL
+A0  |  Octoprint heat signal
+A1  |  Octoprint cool signal
+*D8*  |  NC (reserved if using a VFD)
+*D12*  |  VFD Rx pin (pin14 on VFD)
+
+*VFD display uses D8 & D12 instead of A4 & A5*
+
+## Installation
+This code is written for compatibility with PlatformIO. Edit configuration.h then upload to your uC.

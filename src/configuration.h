@@ -9,6 +9,20 @@
 // Uncomment if your room and enclosure temperatures are swapped.
 //#define swapDallas
 
+// Uncomment if using octoprint triggering
+#define octoprintControl
+#ifdef octoprintControl
+  // Note, octoprint input changes will trigger a mode change ONLY IF they
+  // occur during an automated mode (auto, cooldown, and heating). IE, if a
+  // user is changing a setting in a GUI input mode, the OP command will be
+  // ignored, and the user's end settings will carry on until one of the pins
+  // changes again.
+  #define octoprintHeatPin  A0  // triggers 'heater on' when high
+  #define octoprintCoolPin  A1  // triggers 'cooling on' when high
+  // triggers 'auto on' when both heat and cool pins are low
+  #define octoprintUpdateRate  3000  // millis between reading op input pins
+#endif
+
 // Uncomment if using a 2x20 IEE VFD display
 #define vfd_display
 #ifdef vfd_display
@@ -19,6 +33,7 @@
 #endif
 
 // A 1602 i2c LCD display is default
+// defaults... A4 = SDA, A5 = SCL
 #ifndef vfd_display
   #include <LiquidCrystal_I2C.h>
   #include <Wire.h>
@@ -64,6 +79,7 @@
 #define heaterMaxOffTime 35000 //millis of heater off time to allow before shutting down heating function (heatsoak timer... >heaterMixFanDelay)
 #define heaterHoursIncrement 1 //hrs to increment heater timer
 #define heaterHoursMax 48 //max hrs allowed for heater timer (any int... 48hrs should cover most prints)
+#define heaterHoursDefault 2
 
 #define tempDefault  44.0   //bootup desired Celsius setting (50)
 #define tempMinSetting      20.0   //min desired t allowed(20)

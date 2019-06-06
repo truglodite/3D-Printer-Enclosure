@@ -43,9 +43,13 @@ double spotlightPWM = spotlightPWMdefault;  //case LED pwm storage
 bool heaterStatus = 0;             //storage for heater on/off status
 bool heaterControl = 0;            //heat function on/off (0 = off after bootup)
 unsigned long heaterSwitchTime = 0; //store last time heat was turned on or off
-unsigned long heaterHours = 0;      //store heat timer hours
+unsigned long heaterHours = heaterHoursDefault; //store heat timer hours
 unsigned long heaterStartTime = 0;  //store heat timer start timer
 bool heaterTimerStarted = 0;        //flag to start heat timer
+bool octoprintHeat = 0;             //op heat flag
+bool octoprintCool = 0;             //op cool flag
+bool octoprintUpdateFlag =  0;
+unsigned long lastOctoprintRead = 0; //timer for op readings
 
 //dallas sensor///////////////////////////////////////////////
 OneWire oneWire(dallasPin);
@@ -82,6 +86,10 @@ void setup() {
   pinMode(caseLedPin,OUTPUT);                  //lighting signal
   pinMode(spotlightPin,OUTPUT);                //spotlight signal
   pinMode(heaterPin,OUTPUT);                   //heater signal
+  #ifdef octoprintControl
+    pinMode(octoprintHeatPin,INPUT);           //octoprint heater signal
+    pinMode(octoprintCoolPin,INPUT);           //octoprint cooling signal
+  #endif
 
   //safe init outputs
   analogWrite(freshFanPin,0);
@@ -126,6 +134,11 @@ void setup() {
   //start PIDs
   freshFanPID.SetSampleTime(freshFanPIDsampleTime);
   freshFanPID.SetMode(AUTOMATIC);
+
+  #ifdef octoprintControl  // initialize Octoprint signals
+    octoprintHeat = digitalRead(octoprintHeatPin);
+    octoprintCool = digitalRead(octoprintCoolPin);
+  #endif
 }
 
 void loop() {
@@ -142,6 +155,56 @@ void loop() {
      updateLCD();
     #endif
   }
+
+  #ifdef octoprintControl
+    // time to process op inputs
+    if(currentMillis - lastOctoprintRead > octoprintUpdateRate) {
+      bool octoprintHeatTemp = digitalRead(octoprintHeatPin);
+      bool octoprintCoolTemp = digitalRead(octoprintCoolPin);
+      // op heat and/or cool has changed
+      if(octoprintHeatTemp != octoprintHeat || octoprintCoolTemp != octoprintCool)  {
+        octoprintHeat = octoprintHeatTemp; // update the flags...
+        octoprintCool = octoprintCoolTemp;
+        octoprintUpdateFlag = 1;  // set the update flag
+      }
+    }
+    // one of the inputs has changed
+    if(octoprintUpdateFlag)  {
+      // We currently in a GUI input mode
+      if(mode == 2 || mode == 3 || mode == 4 || mode == 5 || mode == 6) {
+        // do nothing, manual input ALWAYS discards op changes
+        return;
+      }     // after this, we must be in either auto or cool mode
+      // OP sent 'auto no-heat' mode (low heat, low cool)
+      else if(!octoprintCool && !octoprintHeat) {
+        if(mode == 1) {  // we were in cooling mode
+          freshFanPID.SetMode(AUTOMATIC);
+        } // cooling mode
+        mode = 0; // auto mode
+        heaterControl = 0; //turn off heater
+        heaterTimerStarted = 0; //re-enable heater start flag for next time
+      }
+      // op sending new cool signal
+      else if(octoprintCool) {
+        mode = 1; // cooling mode
+        freshFanPID.SetMode(MANUAL);
+        heaterControl = 0; //turn off heater
+        heaterTimerStarted = 0; //re-enable heater start flag for next time
+      }
+      // OP sending new heat signal, and heater is off
+      else if(octoprintHeat && !heaterControl) {
+        if(mode == 1) {  // we were in cooldown mode
+          freshFanPID.SetMode(AUTOMATIC);
+        }
+        mode = 0;  // auto mode (in case we are in cooldown)
+        heaterControl = 1;  // ...with heater function
+        heaterHours = heaterHoursDefault;  //reset timer count
+        heaterSwitchTime = currentMillis;  //to make sure we don't have a false heater timeout
+        heaterTimerStarted = 0; //set flag to restart timer
+      }
+      octoprintUpdateFlag = 0;  // done processing, data is now stale
+    }
+  #endif
 }  //enaloop... ;)
 
 //update Dallas temperature sensor buffers (non-blocking)
@@ -391,7 +454,7 @@ void updateOutputs(void)  {
 
     //heater feature enabled
     if(heaterControl) {
-      //first loop with heater enabled and the timer is enabled
+      //first loop with heater flag on, and the timer is enabled
       if(!heaterTimerStarted && heaterHours) {
         heaterTimerStarted = 1;
         heaterStartTime = currentMillis;
