@@ -34,6 +34,7 @@
  - 3x SPST momentary NO tactile buttons (6mm square type if using my printed VFD enclosure)
  - 5VDC/110VAC 40A SSR (to switch the heater)
  - ~250W personal space heater (120VAC ceramic type preferred)
+ - 50A SSR (for the heater)
 
 ## Operation-----------------------------------------------------------------------
 
