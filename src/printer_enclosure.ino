@@ -1,83 +1,16 @@
-/* printer_enclosure_pid9
- *  by: truglodite
- *  Updated: 5-25-2019
+/* printer_enclosure.ino
+ * by: truglodite
+ * Updated: 5-25-2019
  */
 
-#include <SoftwareSerial.h>
 #include <OneWire.h>
-#include <Wire.h>
 #include <DallasTemperature.h>
 #include <avr/pgmspace.h>
 #include <PID_v1.h>
 #ifdef __AVR__
   #include <avr/power.h>
 #endif
-
-//Use this if your room and enclosure temperatures are not correct.
-//#define swapDallas      //uncomment to "swap locations" of the dallas temp sensors
-
-//pins///////////////////////////////////////////////
-#define dallasPin    2    //To Dallas data pins (requires one 4k7 pullup)
-#define freshFanPin  3    //to cooling fan mosfet
-#define selectPin    4    //all buttons are momentary N.O. (internal pullups are used)
-#define upPin        5
-#define downPin      6
-#define VFD_RX       8    //not physically used, but required for softserial arguments
-#define mixFanPin    9    //to mixing fan mosfet
-#define caseLedPin   10   //to case light mosfet
-#define spotlightPin 11   //to spotlight driver (LDD-350LL driver)
-#define VFD_TX       12   //to VFD serial rx (pin 14)
-#define heaterPin    13   //to heater ssr input
-
-//user prefs///////////////////////////////////////////////
-#define debounce     50   //button debounce millis (no repeaters, so this can be short)
-#define longPress    2000 //millis to hold button for special menus
-#define splashTime   3000 //millis to show splash screen
-#define displayPeriod 200 //millis between display updates (<200 values may blur)
-
-#define caseLedPWMdefault 255 //bootup case lighting brightness
-#define caseLedIncrement 25.5 //PWM change per up/down press
-#define spotlightPWMdefault 255 //bootup spotlight brightness
-#define spotlightIncrement 25.5 //PWM change per up/down press
-
-#define freshFanStartupPWM 50 //fresh fan PWM value used for kickstarting
-#define freshFanMinPWM   13//fresh fan PWM below which the fan stops spinning
-
-#define mixFanPWMdefault 0 //bootup manual mix fan speed
-#define mixFanIncrement 25.5 //PWM change per up/down press
-#define mixFanStartupPWM 50  //mix fan PWM value used for kickstarting
-#define mixFanMinPWM   15  //mix fan PWM below which the fan stops spinning
-
-#define fanStartupPeriod 500 //millis to kickstart all fans
-
-#define heaterMinSwitchTime 10000  //min millis between heater switching
-#define heaterTempOffset 1.0  //celsius below desired temp when heater is allowed on (to avoid heater vs cooling fan fights)
-#define heaterHysteresis 0.5 //Celsius hysteresis to use for heater
-#define heaterMixFanDelay 30000 //millis to keep mixing fan on after heater turns off (>heaterMinSwitchTime)
-#define heaterMixFanPWM 255 //pwm value for mix fan while heater is on (255)
-#define heaterMaxOffTime 35000 //millis of heater off time to allow before shutting down heating function (heatsoak timer... >heaterMixFanDelay)
-#define heaterHoursIncrement 1 //hrs to increment heater timer
-#define heaterHoursMax 48 //max hrs allowed for heater timer (any int... 48hrs should cover most prints)
-
-#define tempDefault  44.0   //bootup desired Celsius setting (50)
-#define tempMinSetting      20.0   //min desired temperature allowed(20)
-#define tempMaxSetting      50.0   //max desired temperature allowed (50). Stepper motors may fail at >50C.
-#define tempCooldownDefault 24.0 //default cooldown temperature (30)
-#define tempCooldownHysteresis 1.0 //hysteresis for fans in cooldown mode
-#define tempIncrement 2.0   //celsius change per up/down push (2)
-
-#define dallasResolution 12 //dallas bit resolution (4,8, or 12)
-#define sizeOfBuffer 3    //the number of temperature readings to store for averaging (1 = disable, larger buffers use more memory
-                          //and may result in laggy PID feedback, which may increase overshoot)
-#define tempPeriod   800  //millis to wait for a requested temp from the Dallas sensor (datasheet says >760 for 12bit)
-
-//PID tuning parameters... will depend on many aspects of your setup. Use ZN or other manual tuning methods.
-//The default PID's work well with my enclosure using a specific assortment of hardware, so they
-//may be a good starting point for tuning most setups.
-#define freshFanPIDsampleTime 200  //200ms should work for most... be aware that PID values scale to sample time
-double freshFanP=    10;  //the pid's must be set whether or not you use bang bang
-double freshFanI=    1;   //default p,i,d = 10,5,1
-double freshFanD=    1;
+#include "configuration.h"
 
 //(more) global vars///////////////////////////////////////////////
 unsigned long currentMillis = 0;   //duh... saves millis() at the start of each loop
@@ -114,141 +47,31 @@ unsigned long heaterHours = 0;               //store heat timer hours
 unsigned long heaterStartTime = 0; //store heat timer start timer
 bool heaterTimerStarted = 0;       //flag to start heat timer
 
-///////////////////////////////////////////////////////////////////////////////////////////
-//Control bytes for the IEE VFD in "LCD" or "Intel" mode, from the IEE S036x2_N manual   //
-//(hex converted to decimal). Most of these codes have been tested on an                 //
-//IEE 036X2-122-09220 VFD (AKA 05464ASSY35119-02A). Other IEE vfd's are likely to work.  //
-///////////////////////////////////////////////////////////////////////////////////////////
-const uint8_t VFDCTRL_CURSOR_BACKSPACE = 8;
-const uint8_t VFDCTRL_CURSOR_ADVANCE = 9;
-const uint8_t VFDCTRL_LINE_FEED = 10;
-//const uint8_t VFDCTRL_CURSOR_BLINK_BLOCK = 11; // Applies to 036X2–151–05240 & 036X2-160-05440 only.
-//const uint8_t VFDCTRL_CURSOR_UNDERBAR = 12; // Applies to 036X2–151–05240 & 036X2-160-05440 only.
-const uint8_t VFDCTRL_CARRIAGE_RETURN = 13;
-const uint8_t VFDCTRL_CURSOR_OFF = 14;
-const uint8_t VFDCTRL_CURSOR_ON = 15; //default
-const uint8_t VFDCTRL_SCROLL_LINE_LOCK = 16; // 2 byte command...
-/* 0   Locks line 0
- * 1   Locks lines 0 and 1
- * 2   Locks lines 0, 1 and 2
- * 255   Cancel Line Lock
- */
-const uint8_t VFDCTRL_SET_VERTICAL_SCROLL_MODE = 17; //default auto cr+lf
-const uint8_t VFDCTRL_SET_HORIZONTAL_SCROLL_MODE = 19;
-const uint8_t VFDCTRL_SOFTWARE_RESET = 20;
-const uint8_t VFDCTRL_CLEAR_DISPLAY_HOME_CURSOR = 21;
-const uint8_t VFDCTRL_HOME_CURSOR = 22;
-const uint8_t VFDCTRL_SET_DATABIT_7_HIGH = 23; //for the following byte
-const uint8_t VFDCTRL_BEGIN_USER_DEFINED_CHARACTER = 24; //7 byte command follow with...
-/* 1 User defined character storage location byte (10 available, from 246 - 255)
- *  and
- * 5 bytes of data for the character dots. 0=Dot off, 1=Dot on.
- * ex: "24 246 P P P P P"
- * where P are position bytes containing 8 bits each (01101010)
- *
-CHARACTER DOT MATRIX (physical location of the actual dots)
-1   2   3   4   5
-6   7   8   9   10
-11  12  13  14  15
-16  17  18  19  20
-21  22  23  24  25
-26  27  28  29  30
-31  32  33  34  35
-
-Map of data bits for part#'s (036X2-100,-105,-122,-124,-134,-130)
-Bit>  7   6   5   4   3   2   1   0
-Btye  ------------------------------
-3     33  15  34  16  35  17  0   18
-4     29  11  30  12  31  13  32  14
-5     25  07  26  08  27  09  28  10
-6     21  03  22  04  23  05  24  06
-7     0   0   0   0   19  01  20  02
-
-Map of data bits for part#'s (036X2-106,-120,-121,-151,-116,-160)
-Bit>  7   6   5   4   3   2   1   0
-Byte  ------------------------------
-3     29  20  11  02  28  19  10  01
-4     31  22  13  04  30  21  12  03
-5     33  24  15  06  32  23  14  05
-6     35  26  17  08  34  25  16  07
-7     0   0   0   0   0   27  18  09
- */
-const uint8_t VFDCTRL_SET_ADDRESSBIT_0_HIGH = 25; //must be followed by control codes below
-const uint8_t VFDCTRL_CURSOR_UP_ONE_LINE = 26;
-const uint8_t VFDCTRL_CURSOR_MOVE_TO_LOCATION = 27; //2 byte command...
-//Follow with a 1 byte position ID. Screen positions are numbered from left to right, top to
-//bottom starting with 0.
-const uint8_t VFDCTRL_CHARSET_EUROPEAN = 28; //default
-const uint8_t VFDCTRL_CHARSET_KATAKANA = 29;
-const uint8_t VFDCTRL_CHARSET_CRYLLIC = 30;
-const uint8_t VFDCTRL_CHARSET_HEBREW = 31;
-
-//***THE FOLLOWING VFD CONTROL CODES MUST BE PRECEDED BY the byte '25' (Set Ao high)***
-const uint8_t VFDCTRL_SET_SCREEN_OR_COLUMN_BRIGHTNESS = 48; //3 byte command...
-/* Follow with Column ID and Brightness Level.
- * Column ID 0-X???, use 255 for entire screen
- * Brightness Level brightest=0 to dimmest=7. default=0
- */
-const uint8_t VFDCTRL_BEGIN_BLINKING_CHARACTERS = 49; //2 byte command...
-/* Follow with rate and type byte
- * Type       Rate    byte
- * -------------------------------------
- * Character  OFF     00   <----default
- * Character  1hz     01
- * Character  2hz     02
- * Character  4hz     04
- * Underbar   OFF     96  -applies only to 36X2–151–05240
- * Underbar   1hz     97  -" "
- * Underbar   2hz     98  -" "
- * Underbar   4hz     100 -" "
- * Both       OFF     128 -" "
- * Both       1hz     129 -" "
- * Both       2hz     130 -" "
- * Both       4hz     132  -" "
- */
-const uint8_t VFDCTRL_END_BLINKING_CHARACTERS = 50;
-const uint8_t VFDCTRL_BLANK_DISPLAY_ON = 51;
-const uint8_t VFDCTRL_BLANK_DISPLAY_OFF = 52;
-//static const char VFDCTRL_COMMA_PERIOD_TRIANGLE_FUNCTION = 53; //Applies to 036X2-121-11120 only.
-const uint8_t VFDCTRL_ERASE_LINE_WITH_END_BLINK = 54; //2 byte command...
-/*
- *
- */
-const uint8_t VFDCTRL_SET_CR_LF_DEFINITIONS = 55; //2 byte command...
-/* Follow with the definition byte
- * bits LFin   CRin
- * --------------------------------
- * 0    LF     CR     <---default
- * 1    LF+CR  CR
- * 2    LF     CR+LF
- * 3    LF+CR  CR+LF
- */
-//static const char VFDCTRL_UNDERBAR_ON = 56; // Applies to 036X2–151–05240 & 036X2-160-05440 only.
-//static const char VFDCTRL_UNDERBAR_OFF = 57; // Applies to 036X2–151–05240 & 036X2-160-05440 only.
-const uint8_t VFDCTRL_SELECT_RIGHT_TO_LEFT_DATA_ENTRY = 58;
-const uint8_t VFDCTRL_SELECT_LEFT_TO_RIGHT_DATA_ENTRY = 59;  //default
-const uint8_t VFDCTRL_SCREEN_SAVER_ON = 60;
-const uint8_t VFDCTRL_SCREEN_SAVER_OFF = 61; //default
-const uint8_t VFDCTRL_SELF_TEST_EXECUTE = 62;
-const uint8_t VFDCTRL_SELF_TEST_TERMINATE = 63;
-
-
 //dallas sensor///////////////////////////////////////////////
 OneWire oneWire(dallasPin);
 DallasTemperature sensors(&oneWire);
 DeviceAddress dallasAddress, dallas2Address;
-//IEE VFD display//////////////////////////////////////////////////////////////////////////////
-//Connect the VFD pin-14 to the "VFD_TX". (rx, tx, invert)
-SoftwareSerial vfd(VFD_RX,VFD_TX,true); //inverted output for direct (rs232) connection
+
+#ifdef vfd_display
+  //IEE VFD display//////////////////////////////////////////////////////////////////////////////
+  //Connect the VFD pin-14 to the "VFD_TX". (rx, tx, invert)
+  SoftwareSerial vfd(VFD_RX,VFD_TX,true); //inverted output for direct (rs232) connection
+#endif
+#ifndef vfd_display
+  LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); // Banggood blue 20x4 i2c display... or 0x27
+#endif
 
 //pids are used for both pid and bang bang... (&input,&output,&setpoint,p,i,d,direction)
 PID freshFanPID(&tempAverage, &freshFanPWM, &tempDesired,freshFanP,freshFanI,freshFanD, P_ON_M, REVERSE);
 
 void setup() {
-  //start vfd
-  vfd.begin(9600); // set up serial port for 9600 baud
-  delay(500); // wait for vfd to boot up
-  vfd.write(VFDCTRL_CLEAR_DISPLAY_HOME_CURSOR); //clear screen
+
+  #ifdef vfd_display
+    //start vfd
+    vfd.begin(9600); // set up serial port for 9600 baud
+    delay(500); // wait for vfd to boot up
+    vfd.write(VFDCTRL_CLEAR_DISPLAY_HOME_CURSOR); //clear screen
+  #endif
 
   //pins
   pinMode(selectPin,INPUT_PULLUP);             //mode button w/pull-up
@@ -281,11 +104,24 @@ void setup() {
   sensors.setResolution(dallas2Address, dallasResolution);    //set res
   sensors.setWaitForConversion(false); //instead we will use non-blocking code to manually time our readings
 
-  //Splash screen
-  //         ("12345678901234567890");
-  vfd.print(F("  Smart Enclosure   "));
-  vfd.print(F("   by: Truglodite   "));
-  delay(splashTime);  //window of time to release a "hold on boot" button
+  #ifdef vfd_display
+    //Splash screen
+    //         ("12345678901234567890");
+    vfd.print(F("  Smart Enclosure   "));
+    vfd.print(F("   by: Truglodite   "));
+    delay(splashTime);  //window of time to release a "hold on boot" button
+  #endif
+  #ifndef vfd_display
+    //start lcd
+    lcd.begin(16,2);
+    lcd.clear();
+    lcd.setCursor(0,0);                          //shamelessness... :P
+    //         ("1234567890123456");
+    lcd.print(F("Smart Enclosure "));
+    lcd.setCursor(0,1);
+    lcd.print(F(" by: Truglodite "));
+    delay(splashTime);  //window of time to release a "hold on boot" button
+  #endif
 
   //start PIDs
   freshFanPID.SetSampleTime(freshFanPIDsampleTime);
@@ -295,16 +131,21 @@ void setup() {
 void loop() {
   currentMillis = millis();  //get the time for this loop
   readButtons();
-  updateTemp();
+  updateTemps();
   freshFanPID.Compute();
   updateOutputs();
   if(currentMillis - lastDisplayTime > displayPeriod) {
-    updateDisplay();
+    #ifdef vfd_display
+     updateVFD();
+    #endif
+    #ifndef vfd_display
+     updateLCD();
+    #endif
   }
 }  //enaloop... ;)
 
 //update Dallas temperature sensor buffers (non-blocking)
-void updateTemp()  {
+void updateTemps()  {
   switch (tempState) {
      case 0:
      sensors.requestTemperatures(); // Send the command to get temperature conversions
@@ -494,7 +335,7 @@ void readButtons(void)  {
       }
       else if(mode == 6) {  //heater timer setting mode
         heaterHours = heaterHours - heaterHoursIncrement;
-        if(heaterHours < 0) {  //stay within range
+        if(heaterHours < 0) {  //stay within range ...heaterHours is unsigned
           heaterHours = 0;
         }
         heaterTimerStarted = 0; //set flag to start/restart timer
@@ -510,10 +351,122 @@ void readButtons(void)  {
     else return;                                //no button pressed or recently released...
   }
   else return;                                  //still debouncing...
-}
+}// End of readButtons()
 
-//update VFD routine (non-clearing, non-blocking)/////////////////////////////////////
-void updateDisplay(void)  {
+// update outputs routine (non-blocking) ////////////////////////////////////
+void updateOutputs(void)  {
+  //cooldown mode
+  if(mode == 1)  {
+    heaterStatus = 0;  //turn off heater
+    if(tempAverage < tempCooldown - tempCooldownHysteresis)  {  //cool enough, turn everything off
+      analogWrite(freshFanPin,0);  //fresh fan off
+      freshFanStarted = false;  //update fan startup flag
+      mixFanPWM = 0;               //mix fan off
+      mixFanStarted = false;  //raise started flag
+    }
+    else if(tempAverage > tempCooldown + tempCooldownHysteresis) {  //not cool enough, cooling off
+      analogWrite(freshFanPin,255);  //both fans on full
+      freshFanStarted = true;  //update fan startup flag
+      mixFanPWM = 255;
+      mixFanStarted = true;  //raise started flag
+    }
+  }
+
+  //auto and setting modes
+  else  {
+    //fresh fan
+    if(!freshFanStarted && freshFanPWM >= freshFanMinPWM) {  //fan is stopped and PWM is high enough to keep it spinning
+      analogWrite(freshFanPin,freshFanStartupPWM);  //kick start power
+      freshFanStarted = true;  //update fan startup flag
+      freshFanStartTime = currentMillis; //start kickstart timer
+    }
+    else if(freshFanStarted && currentMillis - freshFanStartTime >= fanStartupPeriod && freshFanPWM >= freshFanMinPWM) {
+      //cruise: fan has been starting long enough & pwm is high enough to keep it spinning
+      analogWrite(freshFanPin,freshFanPWM);  //update pwm output
+    }
+    else if(freshFanPWM < freshFanMinPWM) {  //off: pwm is too low to keep it spinning
+      analogWrite(freshFanPin,0);  //turn off fan
+      freshFanStarted = false;  //reset startup flag
+    }
+
+    //heater feature enabled
+    if(heaterControl) {
+      //first loop with heater enabled and the timer is enabled
+      if(!heaterTimerStarted && heaterHours) {
+        heaterTimerStarted = 1;
+        heaterStartTime = currentMillis;
+      }
+      //heater is off, temp too low, and it's been off long enough
+      if(!heaterStatus && tempAverage <= tempDesired - heaterTempOffset - heaterHysteresis && currentMillis - heaterSwitchTime >= heaterMinSwitchTime)  {
+        //heater has been off too long... must be heat soaked (requires resetting switchTime when heaterControl is activated!)
+        if(currentMillis - heaterSwitchTime >= heaterMaxOffTime) {
+          heaterControl = 0; //turn off heater function
+          heaterTimerStarted = 0; //re-enable heater start flag for next time
+        }
+        //heater needs to be on
+        else{
+          heaterStatus = 1;
+          heaterSwitchTime = currentMillis;
+        }
+      }
+      //heater is on, temp is high enough, and it's been on long enough
+      else if(heaterStatus && tempAverage >= tempDesired - heaterTempOffset + heaterHysteresis && currentMillis - heaterSwitchTime >= heaterMinSwitchTime) {
+        heaterStatus = 0;
+        heaterSwitchTime = currentMillis;
+      }
+      //heater timer is on and has elapsed...
+      if(heaterHours && currentMillis - heaterStartTime > heaterHours * 3600000)  {
+        heaterControl = 0; //turn off heater function
+        heaterTimerStarted = 0; //re-enable heater start flag for next time
+      }
+    }
+    else if(heaterStatus) {  //heater function was disabled with heater on
+      heaterStatus = 0;
+      heaterSwitchTime = currentMillis;
+    }
+    else heaterStatus = 0;  //heater function disabled and heater off... but just to be sure we turn off every time
+
+    //mixing fan
+    if(!mixFanStarted && (mixFanManualPWM >= mixFanMinPWM || freshFanPWM >= 2)) {
+      //mix fan is stopped, and either manual mix pwm is high enough to run it or fresh fan pwm is not zero
+      mixFanPWM = mixFanStartupPWM; //kick start mixing fan
+      mixFanStarted = true;  //raise started flag
+      mixFanStartTime = currentMillis;  //start kickstart timer
+    }
+    else if(mixFanStarted && currentMillis - mixFanStartTime >= fanStartupPeriod && (mixFanManualPWM >= mixFanMinPWM || freshFanPWM >= 2)) {
+      //mix fan has been started long enough & fresh fan pwm is not zero or manual is high enough to keep spinning
+      if(freshFanPWM <= mixFanManualPWM) {  //fresh fan pwm is lower than manual mix pwm
+        mixFanPWM = mixFanManualPWM;  //use manual speed
+      }
+      else if(freshFanPWM > mixFanMinPWM)  { //fresh pwm is high enough to keep mix fan spinning
+        mixFanPWM = freshFanPWM;  //throttle it with fresh fan
+      }
+      else mixFanPWM = mixFanMinPWM;  //keep the fan spinning until freshPWM goes to zero or manual pwm is inadequate
+    }
+    else if(freshFanPWM < 2 && mixFanManualPWM < mixFanMinPWM) {
+      //fresh pwm<2 (=0 results in "bumping"), and manual pwm is too low to keep it spinning
+      mixFanPWM = 0;  //shutoff fan and reset startup flag
+      mixFanStarted = false;
+    }
+    if (mixFanPWM < heaterMixFanPWM && (heaterStatus || currentMillis - heaterSwitchTime < heaterMixFanDelay)) {
+      //heater is on or just recently turned off, and mix fan is too slow
+      mixFanPWM = heaterMixFanPWM;  //override mixing fan to on
+      mixFanStarted = true;  //raise started flag
+    }
+  }//end of auto & setting modes
+
+  //send updates to the outputs (except fresh fan)
+  analogWrite(mixFanPin,mixFanPWM);
+  analogWrite(caseLedPin,caseLedPWM);
+  digitalWrite(heaterPin,heaterStatus);
+  analogWrite(spotlightPin,spotlightPWM);
+  return;
+
+}  //end of updateOutputs()
+
+#ifdef vfd_display
+// update VFD routine (non-clearing, non-blocking)/////////////////////////////
+void updateVFD(void)  {
   lastDisplayTime = currentMillis;
 
   //calculate some percentages to display
@@ -718,115 +671,198 @@ void updateDisplay(void)  {
     vfd.print(F("                 :-("));
     return;
   }
-}
+}// End of updateVFD()
+#endif
 
-//update the outputs routine (non-blocking)////////////////////////////////////
-void updateOutputs(void)  {
-  //cooldown mode
-  if(mode == 1)  {
-    heaterStatus = 0;  //turn off heater
-    if(tempAverage < tempCooldown - tempCooldownHysteresis)  {  //cool enough, turn everything off
-      analogWrite(freshFanPin,0);  //fresh fan off
-      freshFanStarted = false;  //update fan startup flag
-      mixFanPWM = 0;               //mix fan off
-      mixFanStarted = false;  //raise started flag
+#ifndef vfd_display
+// update LCD routine (non-clearing, non-blocking)/////////////////////////////
+void updateLCD(void)  {
+  lastDisplayTime = currentMillis;
+
+  //calculate some percentages to display
+  int freshFanPercent = 100*freshFanPWM/255;
+  int mixFanPercent = 100*mixFanManualPWM/255;
+  int caseLedPercent = 100*caseLedPWM/255;
+  int spotlightPercent = 100*spotlightPWM/255;
+
+  char fanString[4];             //arrays to store float digits as strings
+  char tempAveString[5];
+  char temp2AveString[5];
+  char tempDesiredString[3];
+  char tempCooldownString[3];
+  char mixFanString[4];
+  char caseLedString[4];
+  char spotlightString[4];
+  char heaterHoursString[3];
+  dtostrf(freshFanPercent,3,0,fanString); //make strings from float data
+  //dtostrf automatically pads any preceding blanks :)
+  dtostrf(tempAverage,4,1,tempAveString);
+  dtostrf(temp2Average,4,1,temp2AveString);
+  dtostrf(tempDesired,2,0,tempDesiredString);
+  dtostrf(tempCooldown,2,0,tempCooldownString);
+  dtostrf(mixFanPercent,3,0,mixFanString);
+  dtostrf(caseLedPercent,3,0,caseLedString);
+  dtostrf(spotlightPercent,3,0,spotlightString);
+  dtostrf(heaterHours,2,0,heaterHoursString);
+
+  //Auto Mode
+  if(!mode)  {
+    lcd.setCursor(0,0); //move to line 0, column 0
+    //Mode, actual, & set temperatures
+    //          "Auto T:XX.X/XXdC"
+    //          "1234567890123456";
+    if(heaterControl) {
+      lcd.print(F("Heat T:"));
     }
-    else if(tempAverage > tempCooldown + tempCooldownHysteresis) {  //not cool enough, cooling off
-      analogWrite(freshFanPin,255);  //both fans on full
-      freshFanStarted = true;  //update fan startup flag
-      mixFanPWM = 255;
-      mixFanStarted = true;  //raise started flag
+    else  {
+      lcd.print(F("Auto T:"));
     }
+    lcd.print(tempAveString);
+    lcd.print(F("/"));
+    lcd.print(tempDesiredString);
+    lcd.print(char(223)); //degree symbol (hex DF)
+    lcd.print(F("C"));
+
+    lcd.setCursor(0,1); //move to line 1, column 0
+    //fan & heater output %'s
+    //          "Rm:XX.XdC F:XXX%"
+    //          "1234567890123456";
+    lcd.print(F("Rm:"));
+    lcd.print(temp2AveString);
+    lcd.print(char(223)); //degree symbol (hex DF)
+    if(!heaterStatus) {  //heater is off
+      lcd.print(F("C F:"));
+      lcd.print(fanString);
+      lcd.print(F("%"));
+    }
+    else  {  //heater is running
+      lcd.print(F("C   Heat"));
+    }
+    return;
   }
 
-  //auto and setting modes
-  else  {
-    //fresh fan
-    if(!freshFanStarted && freshFanPWM >= freshFanMinPWM) {  //fan is stopped and PWM is high enough to keep it spinning
-      analogWrite(freshFanPin,freshFanStartupPWM);  //kick start power
-      freshFanStarted = true;  //update fan startup flag
-      freshFanStartTime = currentMillis; //start kickstart timer
-    }
-    else if(freshFanStarted && currentMillis - freshFanStartTime >= fanStartupPeriod && freshFanPWM >= freshFanMinPWM) {
-      //cruise: fan has been starting long enough & pwm is high enough to keep it spinning
-      analogWrite(freshFanPin,freshFanPWM);  //update pwm output
-    }
-    else if(freshFanPWM < freshFanMinPWM) {  //off: pwm is too low to keep it spinning
-      analogWrite(freshFanPin,0);  //turn off fan
-      freshFanStarted = false;  //reset startup flag
-    }
+  //Cooldown mode
+  else if(mode == 1) {
+    lcd.setCursor(0,0); //move to line 0, column 0
+    //Mode, actual, & set temperatures
+    //          "Cool T:XX.X/XXdC"
+    //          "1234567890123456";
+    lcd.print(F("Cool T:"));
+    lcd.print(tempAveString);
+    lcd.print(F("/"));
+    lcd.print(tempCooldownString);
+    lcd.print(char(223)); //degree symbol (hex DF)
+    lcd.print(F("C"));
 
-    //heater feature enabled
+    lcd.setCursor(0,1); //move to line 1, column 0
+    //fan & heater output %'s
+    //          "Room:XX.XdC Cool"
+    //          "Room:XX.XdC Idle"
+    //          "1234567890123456";
+    lcd.print(F("Room:"));
+    lcd.print(temp2AveString);
+    lcd.print(char(223)); //degree symbol (hex DF)
+    lcd.print(F("C"));
+    if(freshFanStarted)  {
+      lcd.print(F(" Cool"));
+    }
+    else  {
+      lcd.print(F(" Idle"));
+    }
+    return;
+  }
+
+  //mix fan setting mode
+  else if(mode == 2) {
+    lcd.setCursor(0,0); //move to line 0, column 0
+    //Mode, actual, & set temperatures
+    //          "Mixing Fan Speed"
+    //          "1234567890123456";
+    lcd.print(F("Mixing Fan Speed"));
+
+    lcd.setCursor(0,1); //move to line 1, column 0
+    //fan & heater output %'s
+    //          "  Speed: XXX%   "
+    //          "1234567890123456";
+    lcd.print(F("  Speed: "));
+    lcd.print(mixFanString);
+    lcd.print(F("%   "));
+    return;
+  }
+
+  //Case Led setting mode
+  else if(mode == 3) {
+    lcd.setCursor(0,0); //move to line 0, column 0
+    //Mode, actual, & set temperatures
+    //          "Case LED Bright "
+    //          "1234567890123456";
+    lcd.print(F("Case LED Bright "));
+    lcd.setCursor(0,1); //move to line 1, column 0
+    //fan & heater output %'s
+    //          "Brightness: XXX%"
+    //          "1234567890123456";
+    lcd.print(F("Brightness: "));
+    lcd.print(caseLedString);
+    lcd.print(F("%"));
+    return;
+  }
+  //Heater setting mode
+  else if(mode == 4) {
+    lcd.setCursor(0,0); //move to line 0, column 0
+    //Mode, actual, & set temperatures
+    //          "Case LED Bright "
+    //          "1234567890123456";
+    lcd.print(F("Heater Function:"));
+    lcd.setCursor(0,1); //move to line 1, column 0
+    //fan & heater output %'s
+    //            "Brightness: XXX%"
+    //            "1234567890123456";
     if(heaterControl) {
-      //first loop with heater enabled and the timer is enabled
-      if(!heaterTimerStarted && heaterHours) {
-        heaterTimerStarted = 1;
-        heaterStartTime = currentMillis;
-      }
-      //heater is off, temp too low, and it's been off long enough
-      if(!heaterStatus && tempAverage <= tempDesired - heaterTempOffset - heaterHysteresis && currentMillis - heaterSwitchTime >= heaterMinSwitchTime)  {
-        //heater has been off too long... must be heat soaked (requires resetting switchTime when heaterControl is activated!)
-        if(currentMillis - heaterSwitchTime >= heaterMaxOffTime) {
-          heaterControl = 0; //turn off heater function
-          heaterTimerStarted = 0; //re-enable heater start flag for next time
-        }
-        //heater needs to be on
-        else{
-          heaterStatus = 1;
-          heaterSwitchTime = currentMillis;
-        }
-      }
-      //heater is on, temp is high enough, and it's been on long enough
-      else if(heaterStatus && tempAverage >= tempDesired - heaterTempOffset + heaterHysteresis && currentMillis - heaterSwitchTime >= heaterMinSwitchTime) {
-        heaterStatus = 0;
-        heaterSwitchTime = currentMillis;
-      }
-      //heater timer is on and has elapsed...
-      if(heaterHours && currentMillis - heaterStartTime > heaterHours * 3600000)  {
-        heaterControl = 0; //turn off heater function
-        heaterTimerStarted = 0; //re-enable heater start flag for next time
-      }
+      lcd.print(F("       ON       "));
     }
-    else if(heaterStatus) {  //heater function was disabled with heater on
-      heaterStatus = 0;
-      heaterSwitchTime = currentMillis;
+    else  {
+      lcd.print(F("       OFF      "));
     }
-    else heaterStatus = 0;  //heater function disabled and heater off... but just to be sure we turn off every time
-
-    //mixing fan
-    if(!mixFanStarted && (mixFanManualPWM >= mixFanMinPWM || freshFanPWM >= 2)) {
-      //mix fan is stopped, and either manual mix pwm is high enough to run it or fresh fan pwm is not zero
-      mixFanPWM = mixFanStartupPWM; //kick start mixing fan
-      mixFanStarted = true;  //raise started flag
-      mixFanStartTime = currentMillis;  //start kickstart timer
-    }
-    else if(mixFanStarted && currentMillis - mixFanStartTime >= fanStartupPeriod && (mixFanManualPWM >= mixFanMinPWM || freshFanPWM >= 2)) {
-      //mix fan has been started long enough & fresh fan pwm is not zero or manual is high enough to keep spinning
-      if(freshFanPWM <= mixFanManualPWM) {  //fresh fan pwm is lower than manual mix pwm
-        mixFanPWM = mixFanManualPWM;  //use manual speed
-      }
-      else if(freshFanPWM > mixFanMinPWM)  { //fresh pwm is high enough to keep mix fan spinning
-        mixFanPWM = freshFanPWM;  //throttle it with fresh fan
-      }
-      else mixFanPWM = mixFanMinPWM;  //keep the fan spinning until freshPWM goes to zero or manual pwm is inadequate
-    }
-    else if(freshFanPWM < 2 && mixFanManualPWM < mixFanMinPWM) {
-      //fresh pwm<2 (=0 results in "bumping"), and manual pwm is too low to keep it spinning
-      mixFanPWM = 0;  //shutoff fan and reset startup flag
-      mixFanStarted = false;
-    }
-    if (mixFanPWM < heaterMixFanPWM && (heaterStatus || currentMillis - heaterSwitchTime < heaterMixFanDelay)) {
-      //heater is on or just recently turned off, and mix fan is too slow
-      mixFanPWM = heaterMixFanPWM;  //override mixing fan to on
-      mixFanStarted = true;  //raise started flag
-    }
-  }//end of auto & setting modes
-
-  //send updates to the outputs (except fresh fan)
-  analogWrite(mixFanPin,mixFanPWM);
-  analogWrite(caseLedPin,caseLedPWM);
-  digitalWrite(heaterPin,heaterStatus);
-  analogWrite(spotlightPin,spotlightPWM);
-  return;
-
-}  //end of function
+    return;
+  }
+  //Spotlight setting mode
+  else if(mode == 5) {
+    lcd.setCursor(0,0); //move to line 0, column 0
+    //Mode, actual, & set temperatures
+    //          "1234567890123456";
+    lcd.print(F("Spotlight Bright"));
+    lcd.setCursor(0,1); //move to line 1, column 0
+    //fan & heater output %'s
+    //          "Brightness: XXX%"
+    //          "1234567890123456";
+    lcd.print(F("Brightness: "));
+    lcd.print(spotlightString);
+    lcd.print(F("%"));
+    return;
+  }
+  //Heater Timer setting mode
+  else if(mode == 6) {
+    lcd.setCursor(0,0); //move to line 0, column 0
+    //Mode, actual, & set temperatures
+    //          "  Heater Timer  "
+    //          "1234567890123456";
+    lcd.print(F("  Heater Timer  "));
+    lcd.setCursor(0,1); //move to line 1, column 0
+    //fan & heater output %'s
+    //          "1234567890123456";
+    lcd.print(F("      "));
+    lcd.print(heaterHoursString);
+    lcd.print(F("hrs     "));
+    return;
+  }
+  else {  //no man's land
+    lcd.setCursor(0,0); //move to line 0, column 0
+    //          "12345678901234567890";
+    lcd.print(F("Undefined Mode Error"));
+    lcd.setCursor(0,1); //move to line 1, column 0
+    //          "1234567890123456";
+    lcd.print(F("             :-("));
+    return;
+  }
+}// End of updateLCD()
+#endif
