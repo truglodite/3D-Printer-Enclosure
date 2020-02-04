@@ -1,8 +1,7 @@
 // ieeVfdCommands.h
 // by: truglodite
-// updated: 6/5/2019
+// updated: 6/6/2019
 //
-////////////////////////////////////////////////////////////////////////////////
 // Control bytes for the IEE VFD in "LCD" or "Intel" mode (IEE S036x2_N manual,
 // hex converted to decimal). Most of these codes have been tested on an
 // IEE 036X2-122-09220 VFD (AKA 05464ASSY35119-02A). Other IEE vfd's are
@@ -100,9 +99,7 @@ const uint8_t VFDCTRL_BLANK_DISPLAY_ON = 51;
 const uint8_t VFDCTRL_BLANK_DISPLAY_OFF = 52;
 //static const char VFDCTRL_COMMA_PERIOD_TRIANGLE_FUNCTION = 53; //Applies to 036X2-121-11120 only.
 const uint8_t VFDCTRL_ERASE_LINE_WITH_END_BLINK = 54; //2 byte command...
-/*
- *
- */
+// ?? 2nd byte?
 const uint8_t VFDCTRL_SET_CR_LF_DEFINITIONS = 55; //2 byte command...
 /* Follow with the definition byte
  * bits LFin   CRin
@@ -112,8 +109,11 @@ const uint8_t VFDCTRL_SET_CR_LF_DEFINITIONS = 55; //2 byte command...
  * 2    LF     CR+LF
  * 3    LF+CR  CR+LF
  */
-//static const char VFDCTRL_UNDERBAR_ON = 56; // Applies to 036X2–151–05240 & 036X2-160-05440 only.
-//static const char VFDCTRL_UNDERBAR_OFF = 57; // Applies to 036X2–151–05240 & 036X2-160-05440 only.
+
+// Underbar on/off, applies to 036X2–151–05240 & 036X2-160-05440 only.
+// static const char VFDCTRL_UNDERBAR_ON = 56;
+// static const char VFDCTRL_UNDERBAR_OFF = 57;
+
 const uint8_t VFDCTRL_SELECT_RIGHT_TO_LEFT_DATA_ENTRY = 58;
 const uint8_t VFDCTRL_SELECT_LEFT_TO_RIGHT_DATA_ENTRY = 59;  //default
 const uint8_t VFDCTRL_SCREEN_SAVER_ON = 60;

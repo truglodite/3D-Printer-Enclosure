@@ -9,7 +9,6 @@
 // Uncomment if your room and enclosure temperatures are swapped.
 //#define swapDallas
 
-
 #define octoprintControl  // Uncomment if using octoprint triggering
   // Note, octoprint input changes will trigger a mode change ONLY IF they
   // occur during an automated mode (auto, cooldown, and heating). IE, if a
@@ -22,7 +21,6 @@
   // triggers 'auto on' when both heat and cool pins are low
   #define octoprintUpdateRate  3000  // millis between reading op input pins
 #endif
-
 
 #define vfd_display  // Uncomment if using a 2x20 IEE VFD display
 #ifdef vfd_display
